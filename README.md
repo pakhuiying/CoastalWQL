@@ -23,6 +23,8 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 * In your preferred IDE, run `GUI_platform.py`
 * For testing image segmentation and masking, users can supply their own model or try out using the supplied segmentation model `xgb_segmentation.json`
 * For testing model prediction, users may supply their own model or try out the models in the *turbidity_prediction* folder
+* Alternatively, run the code in the python notebook `CoastalWQL_nb.ipynb`
+* Example inputs are provided but hyperspectral images and spectrometer not shared on github due to the sheer size of the data (~70-80GB of images).
 
 *For more details on CoastalWQL's features, do read* `Descriptions of features.pdf`.
 
