@@ -623,7 +623,8 @@ while True:
                 '-SPECTRO_FILEPATH-':values['-SPECTRO_FILEPATH-'],\
                 '-HEIGHT-':int(values['-HEIGHT-']),'-GPS_INDEX_TXT-':values['-GPS_INDEX_TXT-'],'-SLIDER-':values['-SLIDER-'],\
                 '-LINE_START-':line_start,'-LINE_END-':line_end,'rgb_bands':[r,g,b],\
-                '-MASK_CHECKBOX-':values['-MASK_CHECKBOX-'],'-CLASSIFY_CHECKBOX-':values['-CLASSIFY_CHECKBOX-'],'-NOISE_CHECKBOX-':values['-NOISE_CHECKBOX-'],\
+                '-MASK_CHECKBOX-':values['-MASK_CHECKBOX-'],'-CLASSIFY_CHECKBOX-':values['-CLASSIFY_CHECKBOX-'],\
+                '-RADIOMETRIC_CHECKBOX-':values['-RADIOMETRIC_CHECKBOX-'],'-NOISE_CHECKBOX-':values['-NOISE_CHECKBOX-'],\
                 '-SUNGLINT_CHECKBOX-':values['-SUNGLINT_CHECKBOX-'],'-PREDICT_CHECKBOX-':values['-PREDICT_CHECKBOX-'],\
                 'corrected_indices':corrected_indices}
 

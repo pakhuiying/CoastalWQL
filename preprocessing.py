@@ -1,4 +1,3 @@
-from turtle import left
 import numpy as np
 from glob import glob
 from os import listdir, mkdir
@@ -1012,7 +1011,7 @@ class ExtendedRGB:
         rgb_img = np.dstack(image_array)
         return rgb_img
     
-    def overlap_rgb_images(self,img_arrays,overlap_ratio,destriping_fp="destriping_array.csv",reverse=False):
+    def overlap_rgb_images(self,img_arrays,overlap_ratio,reverse=False):
         """
         method (str): Default: recursive. naive or recursive
         img_arrays (list of arrays)
@@ -1020,12 +1019,6 @@ class ExtendedRGB:
         but the quality of the blending is dependent on height, speed of drone because that determines the overlap ratio
         naive has much much faster performance
         """
-        try:
-            destriping_array = np.loadtxt(destriping_fp,delimiter=',')
-        except Exception as E:
-            print("Destriping array cannot be imported. Destriping of rgb images aborted.")
-            destriping_array = np.ones((self.band_numbers,1024))
-        
       
         def destriping_img(img):
             """
