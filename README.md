@@ -15,6 +15,21 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 
 *Source*: Pak et al (2022) An open-source CoastalWQL software for stitching, pre-processing and visualization of push-broom hyperspectral imagery for UAV-based coastal water quality monitoring (to be submitted)
 
+# Dependencies
+* `python == 3.6`
+* conda
+    * `gdal == 3.0.2`
+    * `py-xgboost == 0.90`
+    * `rasterio == 1.1.0`
+* pip
+    * numpy
+    * pandas
+    * matplotlib
+    * sklearn
+    * scipy
+    * OpenCV
+    * `pysimplegui == 4.55.1`
+
 # Usage
 
 * Download [anaconda](https://www.anaconda.com/) (optional but recommended)
