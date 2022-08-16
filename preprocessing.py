@@ -9,9 +9,13 @@ import matplotlib.dates as mdates
 from matplotlib.collections import LineCollection
 from matplotlib.backends.backend_tkagg import FigureCanvasAgg,FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib import colors
-import re
+import re 
 from datetime import datetime, timedelta
-from osgeo import gdal, osr
+try:
+    from osgeo import gdal, osr
+except:
+    pass
+    print("GDAL not imported, geotransformation cannot be conducted...")
 import pandas as pd
 import time
 from PIL import Image, ImageGrab
@@ -23,12 +27,21 @@ from scipy.stats.stats import pearsonr
 import cv2
 import math
 import xgboost as xgb
-import rasterio
-import requests
+try:
+    import rasterio
+except:
+    pass
+try:
+    import requests
+except:
+    pass
 from math import ceil
 from io import BytesIO
 import base64
-import PySimpleGUI as sg
+try:
+    import PySimpleGUI as sg
+except:
+    pass
 import json
 
 
@@ -103,6 +116,26 @@ def save_element_as_file(element, filename):
     # grab = ImageGrab.grab(bbox=box)
     grab = ImageGrab.grab(bbox=None)
     grab.save(filename)
+
+def covariates_str_to_list(covariates):
+    if covariates != '':
+        covariates_index = covariates.replace(' ','').split(',')
+        covariates_index_list = []
+        for i in covariates_index:
+            if ':' in i:
+                c_start, c_end = i.split(':')
+                # print("c_start,c_end:",c_start, c_end)
+                try:
+                    covariates_index_list = covariates_index_list + list(range(int(c_start),int(c_end)+1))
+                except Exception as E:
+                    pass
+            else:
+                covariates_index_list.append(int(i))
+    else:
+        covariates_index_list = list(range(61))
+    
+    return covariates_index_list
+    
 
 def plot_predicted_image(fp):
     predicted_img = cv2.imread(fp, cv2.IMREAD_UNCHANGED) #to read a >8bit image
@@ -3466,6 +3499,7 @@ class StitchHyperspectral:
             pd.DataFrame(flattened_corrected_reflectance,columns=bands).to_csv('{}_image_line_{}_{}_{}.csv'.format(self.prefix,str(self.line_number).zfill(2),self.start_index,self.end_index),index=False)
         #----load model--------
         if model_type == "XGBoost":
+            print("Using XGBoost model for prediction...")
             bst = xgb.Booster({'nthread':4})
             bst.load_model(model)
             #----load model--------
@@ -3480,8 +3514,10 @@ class StitchHyperspectral:
             dtest = xgb.DMatrix(flattened_corrected_reflectance)
             y_hat = bst.predict(dtest) #outputs a float
         elif model_type == "DNN":
+            print("Using DNN model for prediction...")
             # loaded_model = load_model("saved_models/DNN_survey234", custom_objects=ak.CUSTOM_OBJECTS)
-            loaded_model = load_model(model, custom_objects=ak.CUSTOM_OBJECTS)
+            from tensorflow.keras.models import load_model
+            loaded_model = load_model(model)
             if type(covariates_index_list) != list or len(covariates_index_list) > len(bands):
                 print("Input must be a list or number of inputs > bands!")
             elif covariates_index_list == None:
