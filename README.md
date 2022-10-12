@@ -40,7 +40,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 * For testing model prediction, users may supply their own model or try out the models in the *turbidity_prediction* folder
 * Alternatively, run the code in the python notebook `CoastalWQL_nb.ipynb`
 * Example inputs are provided but hyperspectral images and spectrometer not shared on github due to the sheer size of the data (~70-80GB of images).
-* Example images and spectrometer data are shared [here](https://drive.google.com/drive/folders/1sQl46ogE3xtTtfrL_iqUmq_j5pbkNlaK?usp=sharing)
+* Example images and spectrometer data acquired from Nanyang Lake in Nanyang Technological University are shared [here](https://drive.google.com/drive/folders/1sQl46ogE3xtTtfrL_iqUmq_j5pbkNlaK?usp=sharing)
 
 *For more details on CoastalWQL's features, do read* `Descriptions of features.pdf`. For a video demonstration, click [here](https://youtu.be/Jf2hCieibZ8)
 
