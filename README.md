@@ -34,7 +34,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 
 * Download [anaconda](https://www.anaconda.com/) (optional but recommended)
 * Clone or download this repository into your preferred directory
-* Create a virtual environment using `conda env create --file CoastalWQL-env.txt` and `pip install -r CoastalWQL_requirements.txt`
+* Create a virtual environment using `conda env create -f environment.yml` OR `pip install -r CoastalWQL_requirements.txt`
 * In your preferred IDE, run `GUI_platform.py`
 * For testing image segmentation and masking, users can supply their own model or try out using the supplied segmentation model `xgb_segmentation.json`
 * For testing model prediction, users may supply their own model or try out the models in the *turbidity_prediction* folder
