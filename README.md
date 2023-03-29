@@ -1,3 +1,8 @@
+[![Lifecycle:Maturing](https://img.shields.io/badge/Lifecycle-Maturing-007EC6)]
+
+**Author**: Pak Hui Ying  
+**E-mail**: pakhuiying95[at]gmail[dot]com
+
 # CoastalWQL
 CoastalWQL is an open-source software tailored for UAV-based water quality monitoring with a pushbroom hyperspectral imager. It performs the following workflow:
 
@@ -13,7 +18,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 
 ![alt text](workflow.jpg "Workflow")
 
-*Source*: Pak et al (2022) An open-source CoastalWQL software for stitching, pre-processing and visualization of push-broom hyperspectral imagery for UAV-based coastal water quality monitoring (to be submitted)
+*Source*: Pak et al (2022) An open-source CoastalWQL software for stitching, pre-processing and visualization of push-broom hyperspectral imagery for UAV-based coastal water quality monitoring (under review in *Environmental Modelling and Software*)
 
 # Dependencies
 * `python == 3.6`
@@ -44,4 +49,10 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 
 *For more details on CoastalWQL's features, do read* `Descriptions of features.pdf`. For a video demonstration, click [here](https://youtu.be/Jf2hCieibZ8)
 
+## TO-DOs
+
+CoastalWQL is still in development, additional branches added for updates/development
+
+- Atmospheric correction
+- Developing sun-glint correction algorithm for turbid/shallow regions
 
