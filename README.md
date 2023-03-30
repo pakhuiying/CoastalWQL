@@ -6,15 +6,16 @@
 # CoastalWQL
 CoastalWQL is an open-source software tailored for UAV-based water quality monitoring with a pushbroom hyperspectral imager. It performs the following workflow:
 
-* Interactive selection of regions
-* Interactive image alignment with time delay correction
-* Producing false-composite images
-* Sun glint correction
-* Radiometric correction
+* Interactive selection of regions for image stitching
+* Interactive image alignment with real-time *time delay correction*
+* Producing false-composite images from different hyperspectral bands (default is rgb)
+* Sun glint correction using Hedley et al's algorithm
+* Radiometric calibration and correction
 * Image registration
-* Image segmentation and masking
-* Extraction of spectral information based on supplied water quality information
+* Image segmentation and masking (for masking out non-water objects)
+* Extraction of spectral information based on supplied water quality information (e.g. coordinates, in-situ measurements)
 * Prediction of water quality map
+* Extraction of weather variables (wind-speed, wind-direction, air-temperature, relative humidity) (only applicable for retrieving from Singapore's weather stations for now)
 
 ![alt text](workflow.jpg "Workflow")
 
@@ -39,7 +40,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 
 * Download [anaconda](https://www.anaconda.com/) (optional but recommended)
 * Clone or download this repository into your preferred directory
-* Create a virtual environment using `conda env create -f environment.yml` OR `pip install -r CoastalWQL_requirements.txt`
+* Create a virtual environment using `conda env create -f env.yml` (*recommended*) OR `pip install -r CoastalWQL_requirements.txt`
 * In your preferred IDE, run `GUI_platform.py`
 * For testing image segmentation and masking, users can supply their own model or try out using the supplied segmentation model `xgb_segmentation.json`
 * For testing model prediction, users may supply their own model or try out the models in the *turbidity_prediction* folder
