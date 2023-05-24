@@ -3217,12 +3217,12 @@ class StitchHyperspectral:
             corrected means DN/exp_time
             """
             if corrected_raw > corrected_white:
-                return self.Reflectance_White_Ref
+                return float(self.Reflectance_White_Ref)
             elif corrected_raw < corrected_dark:
-                return 0
+                return 0.0
             else:
                 if abs(corrected_white - corrected_dark) < 0.001:
-                    return 0
+                    return 0.0
                 else:
                     return (corrected_raw - corrected_dark)/(corrected_white - corrected_dark)*self.Reflectance_White_Ref
 
