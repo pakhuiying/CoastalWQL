@@ -452,7 +452,7 @@ def correction_stats(im_aligned,corrected_bands,bbox):
         ax.imshow(rgb_cropped)
         ax.set_title(title)
         # ax.axis('off')
-        ax.plot([0,w],[h//2,h//2],color="red",linewidth=3,alpha=0.5)
+        ax.plot([0,w-1],[h//2,h//2],color="red",linewidth=3,alpha=0.5)
         for j,c in enumerate(['r','g','b']):
             axes[1,i+2].plot(list(range(w)),rgb_cropped[h//2,:,j],c=c,alpha=0.5,label=c)
         axes[1,i+2].set_xlabel('Width of image')

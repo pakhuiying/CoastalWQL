@@ -15,8 +15,6 @@ from scipy.stats import gaussian_kde
 from scipy import ndimage
 from math import ceil
 import preprocessing
-import sunglint_correction.SUGAR as sugar
-import sunglint_correction.Kutser as Kutser
 
 def bboxes_to_patches(bboxes):
     if bboxes is not None:
@@ -31,69 +29,48 @@ def bboxes_to_patches(bboxes):
     else:
         return None
     
-class Hedley:
-    def __init__(self, im_aligned, bbox, NIR_band = 47):
+class Goodman:
+    def __init__(self, im_aligned, NIR_lower = 25, NIR_upper = 37, A = 0.000019, B = 0.1):
         """
         :param im_aligned (np.ndarray): band aligned and calibrated & corrected reflectance image
-        :param bbox (tuple): ((x1,y1),(x2,y2)), where x1,y1 is the upper left corner, x2,y2 is the lower right corner, 
-            which contains the glint region in deep water
-        :param NIR_band (int): band index for NIR band which corresponds to 842.36nm, which corresponds closely to the NIR band in Micasense
+        :param NIR_lower (int): band index which corresponds to 641.93nm, closest band to 640nm
+        :param NIR_upper (int): band index which corresponds to 751.49nm, closest band to 750nm
+        :param A (float): the values in Goodman et al's paper, using AVIRIS reflectance (rather than radiance) data
+        :param B (float): the values in Goodman et al's paper, using AVIRIS reflectance (rather than radiance) data
+            see Goodman et al, which corrects each pixel independently. The NIR radiance is subtracted from the radiance at each wavelength,
+            but a wavelength-independent offset is also added. 
+            it is not clear how A and B were chosen, but an optimization for a case where in situ data is
+            available would enable values to be found
         """
         self.im_aligned = im_aligned
-        self.bbox = bbox
-        self.NIR_band = NIR_band
+        self.NIR_lower = NIR_lower
+        self.NIR_upper = NIR_upper
+        self.A = A
+        self.B = B
         self.rgb_bands = [28,17,7]
         self.n_bands = im_aligned.shape[-1]
-        self.R_min = np.percentile(self.im_aligned[:,:,self.NIR_band].flatten(),5,interpolation='nearest')
         wavelength_dict = preprocessing.bands_wavelengths()
         self.wavelength_dict = {i:wavelength for i,wavelength in enumerate(wavelength_dict)}
         self.crop_bands = [2,-3]
-    
-    def covariance_NIR(self,NIR,b):
-        """
-        NIR & b are vectors
-        reflectance for band i
-        """
-        n = len(NIR)
-        pij = np.dot(NIR,b)/n - np.sum(NIR)/n*np.sum(b)/n
-        pjj = np.dot(NIR,NIR)/n - (np.sum(NIR)/n)**2
-        return pij/pjj
-    
-    def correlation_bands_reflectance(self):
-        """
-        calculate correlation between NIR and other bands for reflectance
-        NIR_band is 750 nm
-        """
-        ((x1,y1),(x2,y2)) = self.bbox
-        reflectance_bands = [self.im_aligned[y1:y2,x1:x2,v].flatten() for v in range(self.n_bands)] #flattened images
-        NIR_reflectance = reflectance_bands[self.NIR_band] #flattened images
-        return [self.covariance_NIR(NIR_reflectance,v) for v in reflectance_bands]
-    
+
     def get_corrected_bands(self):
-        """
-        correction is done in reflectance
-        """
-        corr = self.correlation_bands_reflectance()
-        NIR_reflectance = self.im_aligned[:,:,self.NIR_band]
-
-        hedley_c = lambda r,b,NIR,R_min: r - b*(NIR-R_min)
-
+        goodman = lambda r,r_640,r_750, A, B: r - r_750 + (A+B*(r_640-r_750))
         corrected_bands = []
-        for band_number in range(self.n_bands): #iterate across bands
-            b = corr[band_number]
-            R = self.im_aligned[:,:,band_number]
-            corrected_band = hedley_c(R,b,NIR_reflectance,self.R_min)
+        for i in range(self.n_bands):
+            R = self.im_aligned[:,:,i]
+            R_640 = self.im_aligned[:,:,self.NIR_lower]
+            R_750 = self.im_aligned[:,:,self.NIR_upper]
+            corrected_band = goodman(R,R_640,R_750,self.A,self.B)
             corrected_bands.append(corrected_band)
-            
         return corrected_bands
     
-    def correction_stats(self):
+    def correction_stats(self,bbox):
         """
         :param bbox (tuple): ((x1,y1),(x2,y2)), where x1,y1 is the upper left corner, x2,y2 is the lower right corner
         Show corrected and original rgb image, mean reflectance
         """
-        ((x1,y1),(x2,y2)) = self.bbox
-        coord, w, h = bboxes_to_patches(self.bbox)
+        ((x1,y1),(x2,y2)) = bbox
+        coord, w, h = bboxes_to_patches(bbox)
         corrected_bands = self.get_corrected_bands()
         corrected_bands = np.stack(corrected_bands,axis=2)
 
@@ -147,4 +124,3 @@ class Hedley:
         plt.show()
 
         return corrected_bands
-    

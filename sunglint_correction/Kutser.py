@@ -15,8 +15,6 @@ from scipy.stats import gaussian_kde
 from scipy import ndimage
 from math import ceil
 import preprocessing
-import sunglint_correction.SUGAR as sugar
-import sunglint_correction.Kutser as Kutser
 
 def bboxes_to_patches(bboxes):
     if bboxes is not None:
@@ -31,16 +29,22 @@ def bboxes_to_patches(bboxes):
     else:
         return None
     
-class Hedley:
-    def __init__(self, im_aligned, bbox, NIR_band = 47):
+class Kutser:
+    def __init__(self, im_aligned, bbox, oxy_band = 38,lower_oxy = 36, upper_oxy = 49, NIR_band = 47):
         """
         :param im_aligned (np.ndarray): band aligned and calibrated & corrected reflectance image
         :param bbox (tuple): ((x1,y1),(x2,y2)), where x1,y1 is the upper left corner, x2,y2 is the lower right corner, 
             which contains the glint region in deep water
-        :param NIR_band (int): band index for NIR band which corresponds to 842.36nm, which corresponds closely to the NIR band in Micasense
+        :param oxy_band (int): band index for oxygen absorption band, which corresponds to 760.6nm
+        :param oxy_band (int): band index for outside oxygen absorption band, which corresponds to 742.39nm
+        :param oxy_band (int): band index for outside oxygen absorption band, which corresponds to 860.48nm
+            see Kutser, Vahtmäe and Praks
         """
         self.im_aligned = im_aligned
         self.bbox = bbox
+        self.oxy_band = oxy_band
+        self.lower_oxy = lower_oxy
+        self.upper_oxy = upper_oxy
         self.NIR_band = NIR_band
         self.rgb_bands = [28,17,7]
         self.n_bands = im_aligned.shape[-1]
@@ -49,40 +53,43 @@ class Hedley:
         self.wavelength_dict = {i:wavelength for i,wavelength in enumerate(wavelength_dict)}
         self.crop_bands = [2,-3]
     
-    def covariance_NIR(self,NIR,b):
+    def get_depth_D(self):
         """
-        NIR & b are vectors
-        reflectance for band i
-        """
-        n = len(NIR)
-        pij = np.dot(NIR,b)/n - np.sum(NIR)/n*np.sum(b)/n
-        pjj = np.dot(NIR,NIR)/n - (np.sum(NIR)/n)**2
-        return pij/pjj
-    
-    def correlation_bands_reflectance(self):
-        """
-        calculate correlation between NIR and other bands for reflectance
-        NIR_band is 750 nm
+        Assume the amount of glint is proportional to the depth of the oxygen absorption feature, D
+        returns the normalised D by dividing it by the maximum D found in a deep water region
         """
         ((x1,y1),(x2,y2)) = self.bbox
-        reflectance_bands = [self.im_aligned[y1:y2,x1:x2,v].flatten() for v in range(self.n_bands)] #flattened images
-        NIR_reflectance = reflectance_bands[self.NIR_band] #flattened images
-        return [self.covariance_NIR(NIR_reflectance,v) for v in reflectance_bands]
+        D = (self.im_aligned[:,:,self.lower_oxy] + self.im_aligned[:,:,self.upper_oxy])/2 - self.im_aligned[:,:,self.oxy_band]
+        D_max = D[y1:y2,x1:x2].max() # assumed to be the maximum glint value
+        return D/D_max
+    
+    def get_glint_G(self):
+        """
+        The spectral variation of glint G is found by subtracting the spectrum at the darkest (ie. lowest D) NIR deep-water pixel from the brightest
+        returns G as a function of wavelength
+        """
+        ((x1,y1),(x2,y2)) = self.bbox
+
+        G_list = []
+        for i in range(self.n_bands):
+            im = self.im_aligned[y1:y2,x1:x2,i]
+            G = im.max() - im.min()
+            G_list.append(G)
+        return G_list
     
     def get_corrected_bands(self):
         """
         correction is done in reflectance
         """
-        corr = self.correlation_bands_reflectance()
-        NIR_reflectance = self.im_aligned[:,:,self.NIR_band]
-
-        hedley_c = lambda r,b,NIR,R_min: r - b*(NIR-R_min)
+        kutser = lambda r,g,d: r - g*d
+        g_list = self.get_glint_G()
+        D = self.get_depth_D()
 
         corrected_bands = []
         for band_number in range(self.n_bands): #iterate across bands
-            b = corr[band_number]
+            G = g_list[band_number]
             R = self.im_aligned[:,:,band_number]
-            corrected_band = hedley_c(R,b,NIR_reflectance,self.R_min)
+            corrected_band = kutser(R,G,D)
             corrected_bands.append(corrected_band)
             
         return corrected_bands
@@ -147,4 +154,3 @@ class Hedley:
         plt.show()
 
         return corrected_bands
-    
