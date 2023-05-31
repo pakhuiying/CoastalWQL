@@ -3,6 +3,7 @@ import cv2
 import os, glob
 import json
 import tqdm
+import pandas as pd
 # import pickle #This library will maintain the format as well
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -13,6 +14,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from scipy.stats import gaussian_kde
 from scipy import ndimage
+from scipy.optimize import curve_fit
 from math import ceil
 import preprocessing
 import sunglint_correction.Hedley as Hedley
@@ -180,3 +182,209 @@ def compare_correction_algo(im_aligned,bbox,corrected_Hedley = None, corrected_K
 
     compare_plots(im_list, title_list, bbox, save_dir = save_dir)
     return
+
+class ValidateInsitu:
+    """
+    validate sunglint correction with in-situ data
+    """
+    def __init__(self,fp_list,titles,conc_index = 2, save_dir = None):
+        """
+        :param fp_list (list of str): where first item is the fp of the original (uncorrected R_T)
+        :param titles (list of str): description of the algorithm that corresponds to fp_list
+        :param save_dir (fp): directory of where to store data, if None, no data is stored
+        """
+        self.fp_list = fp_list
+        self.titles = titles
+        assert len(titles) == len(fp_list)
+        self.save_dir = save_dir
+        self.parent_dir = None
+        if self.save_dir is not None:
+            parent_dir = os.path.join(self.save_dir,'insitu_validation')
+            if not os.path.exists(parent_dir):
+                os.mkdir(parent_dir)
+            self.parent_dir = parent_dir
+        self.conc_index = conc_index
+        wavelength_dict = preprocessing.bands_wavelengths()
+        self.wavelength_dict = {i:wavelength for i,wavelength in enumerate(wavelength_dict)}
+        self.crop_bands = [2,-3]
+
+    def get_df_list(self):
+        df_list = []
+        na_idx = []
+        for i in range(len(self.fp_list)):
+            df = pd.read_csv(self.fp_list[i])
+            df = df[(df['observation_number'] < 353) | (df['observation_number']> 402)]
+            df = df.dropna()
+            df_list.append(df)
+            na_idx.append(set(df['observation_number'].tolist()))
+        
+        na_idx = na_idx[0].intersection(*na_idx[1:])
+        df_list = {self.titles[i]: df[df['observation_number'].isin(list(na_idx))] for i,df in enumerate(df_list)}
+        return df_list
+
+    def plot_conc_spectral(self, cmap='Spectral_r'):
+        """ 
+        :param fp_list (list of str): list of filepath to df in Extracted_Spectral_Information
+        outputs individual reflectance curve mapped to TSS concentration
+        """
+        def multiline(xs, ys, c, ax=None, **kwargs):
+            """Plot lines with different colorings
+
+            Parameters
+            ----------
+            xs : iterable container of x coordinates
+            ys : iterable container of y coordinates
+            c : iterable container of numbers mapped to colormap
+            ax (optional): Axes to plot on.
+            kwargs (optional): passed to LineCollection
+
+            Notes:
+                len(xs) == len(ys) == len(c) is the number of line segments
+                len(xs[i]) == len(ys[i]) is the number of points for each line (indexed by i)
+
+            Returns
+            -------
+            lc : LineCollection instance.
+            """
+
+            # find axes
+            ax = plt.gca() if ax is None else ax
+
+            # create LineCollection
+            segments = [np.column_stack([x, y]) for x, y in zip(xs, ys)]
+            lc = LineCollection(segments, **kwargs)
+
+            # set coloring of line segments
+            #    Note: I get an error if I pass c as a list here... not sure why.
+            lc.set_array(np.asarray(c))
+
+            # add lines to axes and rescale 
+            #    Note: adding a collection doesn't autoscalee xlim/ylim
+            ax.add_collection(lc)
+            ax.autoscale()
+            return lc
+        
+        df_list = self.get_df_list()
+        concentration = df_list[list(df_list)[0]].iloc[:,self.conc_index].tolist()
+        wavelength = list(self.wavelength_dict.values())
+        wavelength_array = np.array([wavelength for i in range(len(concentration))])
+
+        df_reflectance_list = dict()
+        for t,df in df_list.items():
+            df_reflectance = df.filter(regex=('band.*'))
+            df_reflectance.columns = [f'{w:.2f}' for w in wavelength]
+            df_reflectance_list[t] = df_reflectance.values
+
+        # titles = [r'$R_T$',r'$R_{T,BG}\prime$']
+        ncols = len(list(df_list))
+        col_width = ncols*3
+        fig, axes = plt.subplots(1,ncols,figsize=(col_width,4),sharex=True,sharey=True)
+        n = len(concentration)
+        for i, ((title,df),ax) in enumerate(zip(df_reflectance_list.items(),axes)):
+            x_array = wavelength_array[:,self.crop_bands[0]:self.crop_bands[1]]
+            y_array = df[:,self.crop_bands[0]:self.crop_bands[1]]
+            lc = multiline(x_array, y_array, concentration,ax=ax, cmap=cmap, lw=1)
+            ax.set_title(f'{title} (N = {n})')
+            start, end = ax.get_xlim()
+            ax.xaxis.set_ticks(np.arange(int(start), int(end), 100))
+            ax.tick_params(axis='x', rotation=90)
+            ax.set_xlabel('Wavelength (nm)')
+            ax.set_ylabel('Reflectance')
+
+        axcb = fig.colorbar(lc)
+        axcb.set_label('Turbidity (NTU)')
+        plt.tight_layout()
+        plt.show()
+
+        if self.parent_dir is not None:
+            fig.savefig(os.path.join(self.parent_dir,'insitu_reflectance.png'))
+        return 
+
+    def plot_wavelength_conc(self,df_list,title):
+        """
+        :param df_list (list of pd.DataFrame): where first element is the original/uncorrected R_T, 
+            and the second item is the R_T_prime
+        :param title (str): title of sgc algo
+        returns plot of reflectance vs concentration for every band
+        """
+        def func(x, a, b, c):
+            return a*x**2 + b*x + c
+
+        wavelength = list(self.wavelength_dict.values())
+    
+        df_reflectance_list = []
+        for df in df_list:
+            df_reflectance = df.filter(regex=('band.*'))
+            df_reflectance.columns = [f'{w:.2f}' for w in wavelength]
+            df_reflectance_list.append(df_reflectance.values)
+        df_conc = df_list[0].iloc[:,self.conc_index].to_numpy()
+
+        fig, axes = plt.subplots(8,7,figsize=(20,25))
+        n = len(df_conc)
+    
+        title_desc = ['original',title]
+        c_list = ['tab:blue','tab:orange']
+        labels = [r'$R_T$',r'$R_T\prime$']
+        crop_wavelengths = wavelength[self.crop_bands[0]:self.crop_bands[1]]
+        RMSE_dict = {w:{'original':None,title:None} for w in crop_wavelengths}
+        MAPE_dict = {w:{'original':None,title:None} for w in crop_wavelengths}
+        assert len(crop_wavelengths) == len(axes.flatten())
+        for i, (w, ax) in enumerate(zip(crop_wavelengths,axes.flatten())):
+            for j,label in zip(range(len(df_reflectance_list)),labels):
+                y = df_reflectance_list[j][:,self.crop_bands[0]:self.crop_bands[1]][:,i]
+                # plot scatter
+                ax.plot(df_conc,y,'o',label=labels[j],alpha=0.5,c=c_list[j])
+                # fit curve
+                popt, _ = curve_fit(func, df_conc, y)
+                x = np.linspace(np.min(df_conc),np.max(df_conc),50)
+                y_hat = func(x,*popt)
+                # plot fitted line
+                ax.plot(x,y_hat,linestyle='--',linewidth=2,label=f'{labels[j]}_fitted',c=c_list[j])
+                # get predicted values
+                Y_HAT = func(df_conc,*popt)
+                #calculate rmse
+                rmse = (np.sum((Y_HAT - y)**2)/len(Y_HAT))**(1/2)
+                RMSE_dict[w][title_desc[j]] = rmse
+                # calculate MAPE
+                mape = np.sum(np.abs((y - Y_HAT)/y))/len(Y_HAT)
+                MAPE_dict[w][title_desc[j]] = mape
+                ax.set_title(f'{w} nm (N = {n})')
+                ax.set_ylabel('Reflectance')
+                ax.set_xlabel('Turbidity (NTU)')
+        # fig.suptitle(title)
+        plt.tight_layout()
+        # Put a legend below current axis
+        handles, labels = ax.get_legend_handles_labels()
+        fig.subplots_adjust(bottom=0.05)
+        fig.legend(handles, labels,loc='lower center',ncol=4,prop={'size': 16})
+        plt.show()
+
+        if self.parent_dir is not None:
+            fig.savefig(os.path.join(self.parent_dir,f'{title}_insitu_reflectance.png'))
+
+        metrics_dict = {'RMSE':RMSE_dict,'MAPE':MAPE_dict}
+        metrics_df = dict()
+        for metrics,dic in metrics_dict.items():
+            original_r = [d['original'] for _, d in dic.items()]
+            corrected_r = [d[title] for _, d in dic.items()]
+            df = pd.DataFrame({'Wavelength':list(dic),'original':original_r,title:corrected_r})
+            metrics_df[metrics] = df
+            # if self.parent_dir is not None:
+            #     df.to_csv(os.path.join(self.parent_dir,f'{title}_insitu_{metrics}.csv'),index=False)
+        return metrics_df
+    
+    def get_metrics(self):
+        df_list = self.get_df_list()
+        og_df = df_list[list(df_list)[0]]
+        metrics_df_list = dict()
+        for i,(title,df) in enumerate(df_list.items()):
+            if i > 0:
+                df_2 = [og_df,df]
+                metrics_df = self.plot_wavelength_conc(df_2,title)
+                for metrics, df_metrics in metrics_df.items():
+                    if self.parent_dir is not None:
+                        df_metrics.to_csv(os.path.join(self.parent_dir,f'{i}_{title}_insitu_{metrics}.csv'),index=False)
+                metrics_df_list[title] = metrics_df
+        
+        return metrics_df_list
+    
