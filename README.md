@@ -9,7 +9,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 * Interactive selection of regions for image stitching
 * Interactive image alignment with real-time *time delay correction*
 * Producing false-composite images from different hyperspectral bands (default is rgb)
-* Sun glint correction using Hedley et al's algorithm
+* Sun glint correction using Hedley et al's algorithm (To be updated with SUGAR algorithm to avoid over-correction in turbid/shallow regions)
 * Radiometric calibration and correction
 * Image registration
 * Image segmentation and masking (for masking out non-water objects)
@@ -19,7 +19,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 
 ![alt text](workflow.jpg "Workflow")
 
-*Source*: Pak et al (2022) An open-source CoastalWQL software for stitching, pre-processing and visualization of push-broom hyperspectral imagery for UAV-based coastal water quality monitoring (under review in *Environmental Modelling and Software*)
+*Source*: Pak et al (2023) An open-source tool for drone-based mapping of coastal water quality using push broom hyperspectral imagery (under review in *Remote Sensing*)
 
 # Dependencies
 * `python == 3.6`
@@ -55,5 +55,5 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 CoastalWQL is still in development, additional branches added for updates/development
 
 - Atmospheric correction
-- Developing sun-glint correction algorithm for turbid/shallow regions
+- Integration with SUGAR: sun-glint correction algorithm for turbid/shallow regions
 
