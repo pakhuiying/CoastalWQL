@@ -15,8 +15,6 @@ from scipy.stats import gaussian_kde
 from scipy import ndimage
 from math import ceil
 import preprocessing
-import sunglint_correction.SUGAR as sugar
-import sunglint_correction.Kutser as Kutser
 
 def bboxes_to_patches(bboxes):
     if bboxes is not None:
