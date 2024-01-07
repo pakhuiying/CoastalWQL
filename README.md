@@ -17,7 +17,7 @@ CoastalWQL is an open-source software tailored for UAV-based water quality monit
 * Prediction of water quality map
 * Extraction of weather variables (wind-speed, wind-direction, air-temperature, relative humidity) (only applicable for retrieving from Singapore's weather stations for now)
 
-![alt text](workflow.jpg "Workflow")
+![alt text](images/workflow.jpg "Workflow")
 
 *Source*: Pak et al (2023) An open-source tool for drone-based mapping of coastal water quality using push broom hyperspectral imagery (under review in *Remote Sensing*)
 

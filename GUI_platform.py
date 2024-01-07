@@ -115,12 +115,12 @@ def get_main_window():
                     ]
 
     tab4_layout = [[sg.Frame(layout=[
-                    [sg.Checkbox('Mask objects',size=(12,1),enable_events=True,key='-MASK_CHECKBOX-'),
-                    sg.Checkbox('Classify objects',size=(17,1),key='-CLASSIFY_CHECKBOX-')],
+                    [sg.Checkbox('Mask objects',size=(12,1),default=True,enable_events=True,key='-MASK_CHECKBOX-',tooltip="Classification automatically applied."),
+                    sg.Checkbox('Sunglint correction',default=True,size=(17,1),key='-SUNGLINT_CHECKBOX-')],
+                    # sg.Checkbox('Classify objects',size=(17,1),key='-CLASSIFY_CHECKBOX-')
                     [sg.Checkbox('Noise removal',default=True,size=(12,1),key='-NOISE_CHECKBOX-',tooltip="Destriping to remove stripe noises"),
                     sg.Checkbox('Radiometric correction',default=True,size=(17,1),key='-RADIOMETRIC_CHECKBOX-')],
-                    [sg.Checkbox('Sunglint correction',default=True,size=(17,1),key='-SUNGLINT_CHECKBOX-')],
-                    [sg.Text('Select pseudo-RGB bands:')],
+                    [sg.Text('Select RGB bands (optional):')],
                     [sg.Text('R'),sg.DropDown(values=dropdown_list, enable_events=True,key='-R-', size=(13,1)),
                     sg.Text('G'),sg.DropDown(values=dropdown_list, enable_events=True,key='-G-', size=(13,1)),
                     sg.Text('B'),sg.DropDown(values=dropdown_list, enable_events=True,key='-B-', size=(13,1))]
@@ -128,10 +128,12 @@ def get_main_window():
 
                     [sg.Frame(layout=[
                     [sg.Checkbox('Generate prediction map',size=(20,1),enable_events=True,key='-PREDICT_CHECKBOX-')],
-                    [sg.Input(size=(50,1), default_text='File path of model', enable_events=True,key='-MODEL_FILEPATH-'), sg.FileBrowse()],
-                    [sg.Text('List of bands as predictors:')],
-                    [sg.Input(size=(50,1), key='-MODEL_PREDICTORS-',tooltip='INT input only! Use \':\' to indicate range and \',\' to indicate individual variable')],
-                    [sg.Text('Downsampling factor:'),sg.Slider(range=(0,100),default_value=40,size=(15,15),orientation='h', key='-DOWNSAMPLE_SLIDER-')]
+                    [sg.Text('Nechad et al (2009) semi-analytical coefficients')],
+                    [sg.Input(size=(50,1), key='-MODEL_PREDICTORS-',default_text='87.75,0.2324',tooltip='See documentation/notebook for more info. Float input only! Use \',\' to separate the coefficients')],
+                    # [sg.Input(size=(50,1), default_text='File path of model', enable_events=True,key='-MODEL_FILEPATH-'), sg.FileBrowse()],
+                    # [sg.Text('List of bands as predictors:')],
+                    # [sg.Input(size=(50,1), key='-MODEL_PREDICTORS-',tooltip='INT input only! Use \':\' to indicate range and \',\' to indicate individual variable')],
+                    # [sg.Text('Downsampling factor:'),sg.Slider(range=(0,100),default_value=40,size=(15,15),orientation='h', key='-DOWNSAMPLE_SLIDER-')]
                     ], title='Prediction',font='Arial 8 bold',size=(460,210))]]
 
     tab5_layout = [
@@ -573,11 +575,11 @@ while True:
                 line_start = 0
                 line_end = len(gps_indices)//2-1
             elif values['-LINE_END-'] == '':
-                line_start = values['-LINE_START-']
+                line_start = int(values['-LINE_START-'])
                 line_end = len(gps_indices)//2-1
             elif values['-LINE_START-']!='' and values['-LINE_END-']!='':
-                line_start = values['-LINE_START-']
-                line_end = values['-LINE_END-']
+                line_start = int(values['-LINE_START-'])
+                line_end = int(values['-LINE_END-'])
             else:
                 sg.popup("Please ensure both line start and line end fields are entered!",title="Error")
                 pass
@@ -600,40 +602,45 @@ while True:
 
             plot_flight_camera_attributes(unique_gps_df,int(values['-HEIGHT-']),test_gps_index=test_gps_index)
 
-            if values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True):
-                model_type = "XGBoost"
+            # if values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True):
+            if values['-PREDICT_CHECKBOX-'] is True:
+                # model_type = "XGBoost"
                 if values['-MODEL_PREDICTORS-'] != '':
                     covariates_index = values['-MODEL_PREDICTORS-'].replace(' ','').split(',')
-                    covariates_index_list = []
-                    for i in covariates_index:
-                        if ':' in i:
-                            c_start, c_end = i.split(':')
-                            # print("c_start,c_end:",c_start, c_end)
-                            try:
-                                covariates_index_list = covariates_index_list + list(range(int(c_start),int(c_end)+1))
-                            except Exception as E:
-                                sg.popup("String contains letters!",title="Warning")
-                                pass
-                        else:
-                            covariates_index_list.append(int(i))
-                else:
-                    covariates_index_list = list(range(len(bands_wavelengths())))
+                    covariates_index_list = [float(i) for i in covariates_index]
+                    print(f'Nechad coefficients: {covariates_index_list}')
+                    # covariates_index_list = []
+                    # for i in covariates_index:
+                    #     if ':' in i:
+                    #         c_start, c_end = i.split(':')
+                    #         # print("c_start,c_end:",c_start, c_end)
+                    #         try:
+                    #             covariates_index_list = covariates_index_list + list(range(int(c_start),int(c_end)+1))
+                    #         except Exception as E:
+                    #             sg.popup("String contains letters!",title="Warning")
+                    #             pass
+                    #     else:
+                    #         covariates_index_list.append(int(i))
+                # else:
+                #     covariates_index_list = list(range(len(bands_wavelengths())))
             #---store config file---
             config_file = {'-PROCESSED_IMAGES-':fp_store,'-PREFIX-':values['-PREFIX-'],'-IMAGE_FOLDER_FILEPATH-':values['-IMAGE_FOLDER_FILEPATH-'],\
                 '-SPECTRO_FILEPATH-':values['-SPECTRO_FILEPATH-'],\
                 '-HEIGHT-':int(values['-HEIGHT-']),'-GPS_INDEX_TXT-':values['-GPS_INDEX_TXT-'],'-SLIDER-':values['-SLIDER-'],\
                 '-LINE_START-':line_start,'-LINE_END-':line_end,'rgb_bands':[r,g,b],\
-                '-MASK_CHECKBOX-':values['-MASK_CHECKBOX-'],'-CLASSIFY_CHECKBOX-':values['-CLASSIFY_CHECKBOX-'],\
+                '-MASK_CHECKBOX-':values['-MASK_CHECKBOX-'],\
                 '-RADIOMETRIC_CHECKBOX-':values['-RADIOMETRIC_CHECKBOX-'],'-NOISE_CHECKBOX-':values['-NOISE_CHECKBOX-'],\
                 '-SUNGLINT_CHECKBOX-':values['-SUNGLINT_CHECKBOX-'],'-PREDICT_CHECKBOX-':values['-PREDICT_CHECKBOX-'],\
                 'corrected_indices':corrected_indices}
-
-            if values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True):
-                model_type = "XGBoost"
-                prediction_parameters = ['-MODEL_PREDICTORS-','-MODEL_PREDICTORS-','-RADIOMETRIC_CHECKBOX-','-DOWNSAMPLE_SLIDER-','-PREDICT_CHECKBOX-','-CLASSIFY_CHECKBOX-','-MODEL_FILEPATH-']
-                for p in prediction_parameters:
-                    config_file[p] = values[p]
-                config_file['model_type'] = model_type
+            # '-CLASSIFY_CHECKBOX-':values['-CLASSIFY_CHECKBOX-'],
+            if values['-MODEL_PREDICTORS-'] is not None:
+                config_file['-MODEL_PREDICTORS-'] = values['-MODEL_PREDICTORS-']
+            # if values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True):
+            #     model_type = "XGBoost"
+            #     prediction_parameters = ['-MODEL_PREDICTORS-','-MODEL_PREDICTORS-','-RADIOMETRIC_CHECKBOX-','-DOWNSAMPLE_SLIDER-','-PREDICT_CHECKBOX-','-CLASSIFY_CHECKBOX-','-MODEL_FILEPATH-']
+            #     for p in prediction_parameters:
+            #         config_file[p] = values[p]
+            #     config_file['model_type'] = model_type
             if values['-WQL_CSV-'] is not None:
                 for p in ['-WQL_CSV-','-LAT_COL-','-LON_COL-','-WQL_COL-']:
                     config_file[p] = values[p]
@@ -681,200 +688,236 @@ while True:
                     test_gps_index, unique_gps_df, destriping = values['-NOISE_CHECKBOX-'],\
                     reverse=reverse_boolean_list[line_number])
                 test_stitch_class.view_pseudo_colour(r,g,b) #outputs rgb
-
-            #-----------sunglint correction requires processing of all rgb images first------------
-            if values['-SUNGLINT_CHECKBOX-'] is True:
-                #if sgc json file has been saved, next time dont need to select glint areas again, just click proceed
-                sgc_canvas_window = get_sgc_canvas()
-                fig, ax = plt.subplots()
-                DPI = fig.get_dpi()
-                # ------------------------------- you have to play with this size to reduce the movement error when the mouse hovers over the figure, it's close to canvas size
-                fig.set_size_inches(404 * 2 / float(DPI), 404 / float(DPI))
-            # -------------------------------
-                rgb_fp = [join(fp_store,f) for f in listdir(fp_store) if ("Geotransformed" not in f and "predicted" not in f) and (f.endswith(".tif"))]
-                n_imges = len(rgb_fp)
-                #draw img
-                current_fp = rgb_fp[img_counter%n_imges]
-                img = Image.open(current_fp)
-                img_line = int(rgb_fp[img_counter%n_imges].split('line_')[1][:2])
-                ax.set_title('Select glint (r) & non-glint (p) areas\nLine {}'.format(img_line))
-                im = ax.imshow(img)
-                #draw lines
-                line_glint, = ax.plot(0,0,"o",c="r")
-                line_nonglint, = ax.plot(0,0,"o",c="purple")
-                # Create a Rectangle patch
-                rect_glint = patches.Rectangle((0, 0), 10, 10, linewidth=1, edgecolor='r', facecolor='none')
-                r_glint = ax.add_patch(rect_glint)
-                rect_nonglint = patches.Rectangle((0, 0), 10, 10, linewidth=1, edgecolor='purple', facecolor='none')
-                r_nonglint = ax.add_patch(rect_nonglint)
-                # linebuilder = draw_figure_w_toolbar(sgc_canvas_window['fig_cv'].TKCanvas,fig,sgc_canvas_window['controls_cv'].TKCanvas,"test")
-                figure_canvas_agg = draw_figure_w_toolbar(canvas=sgc_canvas_window['fig_cv'].TKCanvas,fig=fig, canvas_toolbar=sgc_canvas_window['controls_cv'].TKCanvas)
-                linebuilder = LineBuilder(xs_glint=[],ys_glint=[],xs_nonglint=[],ys_nonglint=[],\
-                    line_glint=line_glint,line_nonglint=line_nonglint,r_glint=r_glint,r_nonglint=r_nonglint,\
-                    img_line_glint=current_fp,img_line_nonglint=current_fp,\
-                    img_bbox_glint=None,img_bbox_nonglint=None,\
-                    canvas=figure_canvas_agg,lock=lock,current_fp = current_fp)
-
-            else: #no sunglint correction, proceed with the remaining process
-                print("No sunglint correction...")
-                for line_number in range(line_start, line_end+1):
-                    sg.one_line_progress_meter('Processing in progress', line_number, line_end, f"Processing image line {line_number}...", orientation='h')
-                    start_i,end_i = indexes_list[line_number]#these are image_indices
-                    test_stitch_class = StitchHyperspectral(fp_store,values['-PREFIX-'],values['-IMAGE_FOLDER_FILEPATH-'],values['-SPECTRO_FILEPATH-'],\
-                        int(values['-HEIGHT-']),line_number,start_i,end_i,\
-                        test_gps_index, unique_gps_df,reverse=reverse_boolean_list[line_number])
-                    if values['-MASK_CHECKBOX-'] is True:
-                        print("Performing segmentation...")
-                        mask = test_stitch_class.get_mask(xgb_seg_model,type="XGBoost")
-                    else:
-                        print("Segmentation not conducted...")
-                        mask = None
-                    # test_stitch_class.view_pseudo_colour(r,g,b,"destriping_array.csv")
-                    if (values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True)) or tss_lat is not None:
-                        #produce reflectance for prediction OR extraction of spectral information
-                        sgc_reflectance = None
-                        if values['-RADIOMETRIC_CHECKBOX-'] is True:
-                            reflectance = test_stitch_class.get_stitched_reflectance()
-                            print("Getting radiometrically corrected reflectances...")
-                        else:
-                            reflectance = test_stitch_class.get_stitched_uncorrected_reflectance()
-                            print("Getting uncorrected reflectances...")
-
-                    if values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True):
-                        #prediction
-                        try: #4:54, #4:15,33:38,43:46,53:54
-                            test_stitch_class.get_predicted_image(model=values['-MODEL_FILEPATH-'],\
-                                covariates_index_list = covariates_index_list,\
-                                model_type=model_type,\
-                                # radiometric_correction=values['-RADIOMETRIC_CHECKBOX-'],\
-                                scaling_factor=int(values['-DOWNSAMPLE_SLIDER-']),\
-                                glint_corrected_reflectance=sgc_reflectance,reflectance=reflectance)
-                            print("Generating prediction map...")
-                        except Exception as E:
-                            sg.popup(f'{E}',title="Warning!")
-                            print("No prediction...")
-                            pass
-                    if tss_lat is not None:
-                        #extraction of spectral information
-                        test_stitch_class.get_reflectance_from_GPS(tss_lat,tss_lon,tss_measurements,\
-                            radius=2, mask = mask,\
-                            glint_corrected_reflectance=sgc_reflectance,reflectance = reflectance)
-                    gti = GeotransformImage(test_stitch_class,\
-                        mask = mask, classify = values['-CLASSIFY_CHECKBOX-'],\
-                        transform_predicted_image = values['-PREDICT_CHECKBOX-'],\
-                        sunglint_correction=values['-SUNGLINT_CHECKBOX-'])
-                    gti.geotransform_image()
-                
-                if tss_lat is not None:
-                    test_stitch_class.preprocess_spectral_info(export_to_array=False)
-
-                end_time = time.time()
-                print('Stitching completed!')
-                sg.popup('Stitching completed!\nTotal time taken: {:.1f} seconds'.format(end_time - start_time),title='Progress')
-                
-                try:
-                    file_list = listdir(fp_store)
-                except:
-                    file_list = []
-                fnames = [f for f in file_list if isfile(
-                    join(fp_store, f)) and f.lower().endswith((".tif"))]
-                fnames.sort()
-                window['-IMAGE LIST-'].update(fnames)
-            
-    if event == "-PROCEED_PROCESS-":
-        #if sgc json file has been saved, next time dont need to select glint areas again, just click proceed
-        #-----close sunglint correction window---------
-        sg.popup("Proceeding with the rest of processing...")
-        if window == sgc_canvas_window:
-            window.close()
-            sgc_canvas_window = None
-        #-------------load sgc json file---------------
-        try:
-            sunglint_json_fp = join(fp_store,'sunglint_correction_{}.txt'.format(config_file['-PREFIX-']))
-            with open(sunglint_json_fp,"r") as cf:
-                bbox = json.load(cf)
-            
-        except Exception as E:
-            sg.popup(f"{E}",title="Error")
-            sunglint_json_fp = None
-            reflectance_glint = None
-        try:
-            line_glint = bbox['glint']['line']
-            start_i,end_i = indexes_list[line_glint]
-            test_stitch_class = StitchHyperspectral(fp_store,config_file['-PREFIX-'],config_file['-IMAGE_FOLDER_FILEPATH-'],config_file['-SPECTRO_FILEPATH-'],\
-                int(config_file['-HEIGHT-']),line_glint,start_i,end_i,\
-                test_gps_index, unique_gps_df,reverse=reverse_boolean_list[line_glint])
-
-            reflectance_glint = test_stitch_class.get_stitched_reflectance() #radiometrically corrected reflectance only for the image line where glint bbox is drawn on
-        except Exception as E:
-            sg.popup(f"{E}",title="Error")
-            sunglint_json_fp = None
-            reflectance_glint = None
-            
-        #-----closed sunglint correction window and proceed with the remaining---------
-        for line_number in range(line_start, line_end+1):
-            sg.one_line_progress_meter('Processing in progress', line_number, line_end, f"Processing image line {line_number}...", orientation='h')
-            start_i,end_i = indexes_list[line_number]#these are image_indices
-            test_stitch_class = StitchHyperspectral(fp_store,config_file['-PREFIX-'],config_file['-IMAGE_FOLDER_FILEPATH-'],config_file['-SPECTRO_FILEPATH-'],\
-                int(config_file['-HEIGHT-']),line_number,start_i,end_i,\
-                test_gps_index, unique_gps_df,reverse=reverse_boolean_list[line_number])
-            if config_file['-SUNGLINT_CHECKBOX-'] is True and sunglint_json_fp is not None and reflectance_glint is not None:
-                sgc = SunglintCorrection(test_stitch_class,sunglint_json_fp,reflectance_glint)
-                sgc.sunglint_correction_rgb()
-                print("Performing sunglint correction on RGB images...")
-            # if values['-MASK_CHECKBOX-'] is True:
-            if config_file['-MASK_CHECKBOX-'] is True:
-                print("Performing segmentation...")
-                mask = test_stitch_class.get_mask(xgb_seg_model,type="XGBoost")
-            else:
-                print("Segmentation not conducted...")
-                mask = None
-            if (config_file['-PREDICT_CHECKBOX-'] == True and (config_file['-MODEL_FILEPATH-'].endswith('.model') == True or config_file['-MODEL_FILEPATH-'].endswith('.json') == True)) or tss_lat is not None:
-                if config_file['-SUNGLINT_CHECKBOX-'] is True and sunglint_json_fp is not None and reflectance_glint is not None:
-                    sgc_reflectance = sgc.sunglint_correction_reflectance()
-                    reflectance = None
-                    print("Performing sunglint correction on hyperspectral reflectances...")
+                ##-----masking--------------
+                if values['-MASK_CHECKBOX-'] is True:
+                    print("Performing segmentation...")
+                    mask = test_stitch_class.get_mask(xgb_seg_model,type="XGBoost")
                 else:
-                    print("No sunglint correction...")
-                    config_file['-SUNGLINT_CHECKBOX-'] = False
-                    sgc_reflectance = None
-                    if config_file['-RADIOMETRIC_CHECKBOX-'] is True:
-                        reflectance = test_stitch_class.get_stitched_reflectance()
-                        print("Getting radiometrically corrected reflectances...")
-                    else:
-                        reflectance = test_stitch_class.get_stitched_uncorrected_reflectance()
-                        print("Getting uncorrected reflectances...")
-            else:
-                print("No prediction or extraction of spectral information or sunglint correction...")
-                #no prediction, no extraction of spectral information. Then no need for sunglint correction reflectance
-                reflectance = None
-                sgc_reflectance = None
-                tss_lat = None
-                config_file['-PREDICT_CHECKBOX-'] = False
-                config_file['-SUNGLINT_CHECKBOX-'] = False
+                    print("Segmentation not conducted...")
+                    mask = None
+                
+                if values['-RADIOMETRIC_CHECKBOX-'] is True:
+                    print("Getting radiometrically corrected reflectances...")
+                    reflectance = test_stitch_class.get_stitched_reflectance()
+                else:
+                    print("Getting uncorrected reflectances...")
+                    reflectance = test_stitch_class.get_stitched_uncorrected_reflectance()
+                if values['-SUNGLINT_CHECKBOX-'] is True:
+                    print("Performing SUGAR correction...")
+                    reflectance = test_stitch_class.sunglint_sugar_correction(reflectance)
 
-            if config_file['-PREDICT_CHECKBOX-'] == True and (config_file['-MODEL_FILEPATH-'].endswith('.model') == True or config_file['-MODEL_FILEPATH-'].endswith('.json') == True):
-                try: #4:54, #4:15,33:38,43:46,53:54
-                    test_stitch_class.get_predicted_image(model=config_file['-MODEL_FILEPATH-'],\
-                        covariates_index_list = covariates_index_list,\
-                        model_type=model_type,\
-                        scaling_factor=int(config_file['-DOWNSAMPLE_SLIDER-']),\
-                        glint_corrected_reflectance=sgc_reflectance,reflectance=reflectance)
-                    print("Generating prediction map...")
-                except Exception as E:
-                    sg.popup(f'{E}',title="Warning!")
-                    print("No prediction...")
-                    pass
-            if tss_lat is not None:
-                test_stitch_class.get_reflectance_from_GPS(tss_lat,tss_lon,tss_measurements,\
-                    radius=2, mask = mask,\
-                    glint_corrected_reflectance=sgc_reflectance,reflectance = reflectance)
-                print("Extracting spectral information...")
-            gti = GeotransformImage(test_stitch_class,\
-                mask = mask, classify = config_file['-CLASSIFY_CHECKBOX-'],\
-                transform_predicted_image = config_file['-PREDICT_CHECKBOX-'],\
-                sunglint_correction=config_file['-SUNGLINT_CHECKBOX-'])
-            gti.geotransform_image()
+                ##---------extraction of spectral information
+                if tss_lat is not None:
+                    print("Extracting spectral information...")
+                    #extraction of spectral information
+                    test_stitch_class.get_reflectance_from_GPS(tss_lat,tss_lon,tss_measurements,\
+                        radius=2, mask = mask,\
+                        reflectance = reflectance)
+                #-----prediction-------------
+                if values['-PREDICT_CHECKBOX-'] is True:
+                    try: 
+                        test_stitch_class.get_nechad_predicted_image(reflectance,reflectance_band=27,
+                                                                     A_tau=covariates_index_list[0],C=covariates_index_list[1])
+                        print("Generating prediction map...")
+                    except Exception as E:
+                        print("No prediction...")
+                        pass
+                #------geotransform--------
+                gti = GeotransformImage(test_stitch_class)
+                gti.geotransform_image()
+    #         #-----------sunglint correction requires processing of all rgb images first------------
+    #         if values['-SUNGLINT_CHECKBOX-'] is True:
+    #             #if sgc json file has been saved, next time dont need to select glint areas again, just click proceed
+    #             sgc_canvas_window = get_sgc_canvas()
+    #             fig, ax = plt.subplots()
+    #             DPI = fig.get_dpi()
+    #             # ------------------------------- you have to play with this size to reduce the movement error when the mouse hovers over the figure, it's close to canvas size
+    #             fig.set_size_inches(404 * 2 / float(DPI), 404 / float(DPI))
+    #         # -------------------------------
+    #             rgb_fp = [join(fp_store,f) for f in listdir(fp_store) if ("Geotransformed" not in f and "predicted" not in f) and (f.endswith(".tif"))]
+    #             n_imges = len(rgb_fp)
+    #             #draw img
+    #             current_fp = rgb_fp[img_counter%n_imges]
+    #             img = Image.open(current_fp)
+    #             img_line = int(rgb_fp[img_counter%n_imges].split('line_')[1][:2])
+    #             ax.set_title('Select glint (r) & non-glint (p) areas\nLine {}'.format(img_line))
+    #             im = ax.imshow(img)
+    #             #draw lines
+    #             line_glint, = ax.plot(0,0,"o",c="r")
+    #             line_nonglint, = ax.plot(0,0,"o",c="purple")
+    #             # Create a Rectangle patch
+    #             rect_glint = patches.Rectangle((0, 0), 10, 10, linewidth=1, edgecolor='r', facecolor='none')
+    #             r_glint = ax.add_patch(rect_glint)
+    #             rect_nonglint = patches.Rectangle((0, 0), 10, 10, linewidth=1, edgecolor='purple', facecolor='none')
+    #             r_nonglint = ax.add_patch(rect_nonglint)
+    #             # linebuilder = draw_figure_w_toolbar(sgc_canvas_window['fig_cv'].TKCanvas,fig,sgc_canvas_window['controls_cv'].TKCanvas,"test")
+    #             figure_canvas_agg = draw_figure_w_toolbar(canvas=sgc_canvas_window['fig_cv'].TKCanvas,fig=fig, canvas_toolbar=sgc_canvas_window['controls_cv'].TKCanvas)
+    #             linebuilder = LineBuilder(xs_glint=[],ys_glint=[],xs_nonglint=[],ys_nonglint=[],\
+    #                 line_glint=line_glint,line_nonglint=line_nonglint,r_glint=r_glint,r_nonglint=r_nonglint,\
+    #                 img_line_glint=current_fp,img_line_nonglint=current_fp,\
+    #                 img_bbox_glint=None,img_bbox_nonglint=None,\
+    #                 canvas=figure_canvas_agg,lock=lock,current_fp = current_fp)
+
+    #         else: #no sunglint correction, proceed with the remaining process
+    #             print("No sunglint correction...")
+    #             for line_number in range(line_start, line_end+1):
+    #                 sg.one_line_progress_meter('Processing in progress', line_number, line_end, f"Processing image line {line_number}...", orientation='h')
+    #                 start_i,end_i = indexes_list[line_number]#these are image_indices
+    #                 test_stitch_class = StitchHyperspectral(fp_store,values['-PREFIX-'],values['-IMAGE_FOLDER_FILEPATH-'],values['-SPECTRO_FILEPATH-'],\
+    #                     int(values['-HEIGHT-']),line_number,start_i,end_i,\
+    #                     test_gps_index, unique_gps_df,reverse=reverse_boolean_list[line_number])
+    #                 if values['-MASK_CHECKBOX-'] is True:
+    #                     print("Performing segmentation...")
+    #                     mask = test_stitch_class.get_mask(xgb_seg_model,type="XGBoost")
+    #                 else:
+    #                     print("Segmentation not conducted...")
+    #                     mask = None
+    #                 # test_stitch_class.view_pseudo_colour(r,g,b,"destriping_array.csv")
+    #                 if (values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True)) or tss_lat is not None:
+    #                     #produce reflectance for prediction OR extraction of spectral information
+    #                     sgc_reflectance = None
+    #                     if values['-RADIOMETRIC_CHECKBOX-'] is True:
+    #                         reflectance = test_stitch_class.get_stitched_reflectance()
+    #                         print("Getting radiometrically corrected reflectances...")
+    #                     else:
+    #                         reflectance = test_stitch_class.get_stitched_uncorrected_reflectance()
+    #                         print("Getting uncorrected reflectances...")
+
+    #                 if values['-PREDICT_CHECKBOX-'] == True and (values['-MODEL_FILEPATH-'].endswith('.model') == True or values['-MODEL_FILEPATH-'].endswith('.json') == True):
+    #                     #prediction
+    #                     try: #4:54, #4:15,33:38,43:46,53:54
+    #                         test_stitch_class.get_predicted_image(model=values['-MODEL_FILEPATH-'],\
+    #                             covariates_index_list = covariates_index_list,\
+    #                             model_type=model_type,\
+    #                             # radiometric_correction=values['-RADIOMETRIC_CHECKBOX-'],\
+    #                             scaling_factor=int(values['-DOWNSAMPLE_SLIDER-']),\
+    #                             glint_corrected_reflectance=sgc_reflectance,reflectance=reflectance)
+    #                         print("Generating prediction map...")
+    #                     except Exception as E:
+    #                         sg.popup(f'{E}',title="Warning!")
+    #                         print("No prediction...")
+    #                         pass
+    #                 if tss_lat is not None:
+    #                     #extraction of spectral information
+    #                     test_stitch_class.get_reflectance_from_GPS(tss_lat,tss_lon,tss_measurements,\
+    #                         radius=2, mask = mask,\
+    #                         glint_corrected_reflectance=sgc_reflectance,reflectance = reflectance)
+    #                 gti = GeotransformImage(test_stitch_class,\
+    #                     mask = mask, classify = values['-CLASSIFY_CHECKBOX-'],\
+    #                     transform_predicted_image = values['-PREDICT_CHECKBOX-'],\
+    #                     sunglint_correction=values['-SUNGLINT_CHECKBOX-'])
+    #                 gti.geotransform_image()
+                
+    #             if tss_lat is not None:
+    #                 test_stitch_class.preprocess_spectral_info(export_to_array=False)
+
+    #             end_time = time.time()
+    #             print('Stitching completed!')
+    #             sg.popup('Stitching completed!\nTotal time taken: {:.1f} seconds'.format(end_time - start_time),title='Progress')
+                
+    #             try:
+    #                 file_list = listdir(fp_store)
+    #             except:
+    #                 file_list = []
+    #             fnames = [f for f in file_list if isfile(
+    #                 join(fp_store, f)) and f.lower().endswith((".tif"))]
+    #             fnames.sort()
+    #             window['-IMAGE LIST-'].update(fnames)
+            
+    # if event == "-PROCEED_PROCESS-":
+    #     #if sgc json file has been saved, next time dont need to select glint areas again, just click proceed
+    #     #-----close sunglint correction window---------
+    #     sg.popup("Proceeding with the rest of processing...")
+    #     if window == sgc_canvas_window:
+    #         window.close()
+    #         sgc_canvas_window = None
+    #     #-------------load sgc json file---------------
+    #     try:
+    #         sunglint_json_fp = join(fp_store,'sunglint_correction_{}.txt'.format(config_file['-PREFIX-']))
+    #         with open(sunglint_json_fp,"r") as cf:
+    #             bbox = json.load(cf)
+            
+    #     except Exception as E:
+    #         sg.popup(f"{E}",title="Error")
+    #         sunglint_json_fp = None
+    #         reflectance_glint = None
+    #     try:
+    #         line_glint = bbox['glint']['line']
+    #         start_i,end_i = indexes_list[line_glint]
+    #         test_stitch_class = StitchHyperspectral(fp_store,config_file['-PREFIX-'],config_file['-IMAGE_FOLDER_FILEPATH-'],config_file['-SPECTRO_FILEPATH-'],\
+    #             int(config_file['-HEIGHT-']),line_glint,start_i,end_i,\
+    #             test_gps_index, unique_gps_df,reverse=reverse_boolean_list[line_glint])
+
+    #         reflectance_glint = test_stitch_class.get_stitched_reflectance() #radiometrically corrected reflectance only for the image line where glint bbox is drawn on
+    #     except Exception as E:
+    #         sg.popup(f"{E}",title="Error")
+    #         sunglint_json_fp = None
+    #         reflectance_glint = None
+            
+    #     #-----closed sunglint correction window and proceed with the remaining---------
+    #     for line_number in range(line_start, line_end+1):
+    #         sg.one_line_progress_meter('Processing in progress', line_number, line_end, f"Processing image line {line_number}...", orientation='h')
+    #         start_i,end_i = indexes_list[line_number]#these are image_indices
+    #         test_stitch_class = StitchHyperspectral(fp_store,config_file['-PREFIX-'],config_file['-IMAGE_FOLDER_FILEPATH-'],config_file['-SPECTRO_FILEPATH-'],\
+    #             int(config_file['-HEIGHT-']),line_number,start_i,end_i,\
+    #             test_gps_index, unique_gps_df,reverse=reverse_boolean_list[line_number])
+    #         if config_file['-SUNGLINT_CHECKBOX-'] is True and sunglint_json_fp is not None and reflectance_glint is not None:
+    #             sgc = SunglintCorrection(test_stitch_class,sunglint_json_fp,reflectance_glint)
+    #             sgc.sunglint_correction_rgb()
+    #             print("Performing sunglint correction on RGB images...")
+    #         # if values['-MASK_CHECKBOX-'] is True:
+    #         if config_file['-MASK_CHECKBOX-'] is True:
+    #             print("Performing segmentation...")
+    #             mask = test_stitch_class.get_mask(xgb_seg_model,type="XGBoost")
+    #         else:
+    #             print("Segmentation not conducted...")
+    #             mask = None
+    #         if (config_file['-PREDICT_CHECKBOX-'] == True and (config_file['-MODEL_FILEPATH-'].endswith('.model') == True or config_file['-MODEL_FILEPATH-'].endswith('.json') == True)) or tss_lat is not None:
+    #             if config_file['-SUNGLINT_CHECKBOX-'] is True and sunglint_json_fp is not None and reflectance_glint is not None:
+    #                 sgc_reflectance = sgc.sunglint_correction_reflectance()
+    #                 reflectance = None
+    #                 print("Performing sunglint correction on hyperspectral reflectances...")
+    #             else:
+    #                 print("No sunglint correction...")
+    #                 config_file['-SUNGLINT_CHECKBOX-'] = False
+    #                 sgc_reflectance = None
+    #                 if config_file['-RADIOMETRIC_CHECKBOX-'] is True:
+    #                     reflectance = test_stitch_class.get_stitched_reflectance()
+    #                     print("Getting radiometrically corrected reflectances...")
+    #                 else:
+    #                     reflectance = test_stitch_class.get_stitched_uncorrected_reflectance()
+    #                     print("Getting uncorrected reflectances...")
+    #         else:
+    #             print("No prediction or extraction of spectral information or sunglint correction...")
+    #             #no prediction, no extraction of spectral information. Then no need for sunglint correction reflectance
+    #             reflectance = None
+    #             sgc_reflectance = None
+    #             tss_lat = None
+    #             config_file['-PREDICT_CHECKBOX-'] = False
+    #             config_file['-SUNGLINT_CHECKBOX-'] = False
+
+    #         if config_file['-PREDICT_CHECKBOX-'] == True and (config_file['-MODEL_FILEPATH-'].endswith('.model') == True or config_file['-MODEL_FILEPATH-'].endswith('.json') == True):
+    #             try: #4:54, #4:15,33:38,43:46,53:54
+    #                 test_stitch_class.get_predicted_image(model=config_file['-MODEL_FILEPATH-'],\
+    #                     covariates_index_list = covariates_index_list,\
+    #                     model_type=model_type,\
+    #                     scaling_factor=int(config_file['-DOWNSAMPLE_SLIDER-']),\
+    #                     glint_corrected_reflectance=sgc_reflectance,reflectance=reflectance)
+    #                 print("Generating prediction map...")
+    #             except Exception as E:
+    #                 sg.popup(f'{E}',title="Warning!")
+    #                 print("No prediction...")
+    #                 pass
+    #         if tss_lat is not None:
+    #             test_stitch_class.get_reflectance_from_GPS(tss_lat,tss_lon,tss_measurements,\
+    #                 radius=2, mask = mask,\
+    #                 glint_corrected_reflectance=sgc_reflectance,reflectance = reflectance)
+    #             print("Extracting spectral information...")
+    #         gti = GeotransformImage(test_stitch_class,\
+    #             mask = mask, classify = config_file['-CLASSIFY_CHECKBOX-'],\
+    #             transform_predicted_image = config_file['-PREDICT_CHECKBOX-'],\
+    #             sunglint_correction=config_file['-SUNGLINT_CHECKBOX-'])
+    #         gti.geotransform_image()
         
         if tss_lat is not None:
             test_stitch_class.preprocess_spectral_info(export_to_array=False)
