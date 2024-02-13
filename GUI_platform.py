@@ -128,8 +128,10 @@ def get_main_window():
 
                     [sg.Frame(layout=[
                     [sg.Checkbox('Generate prediction map',size=(20,1),enable_events=True,key='-PREDICT_CHECKBOX-')],
-                    [sg.Text('Nechad et al (2009) semi-analytical coefficients')],
-                    [sg.Input(size=(50,1), key='-MODEL_PREDICTORS-',default_text='87.75,0.2324',tooltip='See documentation/notebook for more info. Float input only! Use \',\' to separate the coefficients')],
+                    [sg.Text('Band (nm) for turbidity retrieval:')],
+                    [sg.Input(size=(50,1), key='-BAND_NUMBER-',default_text='715',tooltip='Red to NIR wavelengths in nanometers')],
+                    [sg.Text('Nechad et al (2009) semi-analytical coefficients:')],
+                    [sg.Input(size=(50,1), key='-MODEL_PREDICTORS-',default_text='137.85,0.2516',tooltip='See documentation/notebook for more info. Float input only! Use \',\' to separate the coefficients')],
                     # [sg.Input(size=(50,1), default_text='File path of model', enable_events=True,key='-MODEL_FILEPATH-'), sg.FileBrowse()],
                     # [sg.Text('List of bands as predictors:')],
                     # [sg.Input(size=(50,1), key='-MODEL_PREDICTORS-',tooltip='INT input only! Use \':\' to indicate range and \',\' to indicate individual variable')],
@@ -609,6 +611,12 @@ while True:
                     covariates_index = values['-MODEL_PREDICTORS-'].replace(' ','').split(',')
                     covariates_index_list = [float(i) for i in covariates_index]
                     print(f'Nechad coefficients: {covariates_index_list}')
+                if values['-BAND_NUMBER-'] != '':
+                    nechad_band = float(values['-BAND_NUMBER-'])
+                    nechad_band_number = [b for b in bands_wavelengths() if b>nechad_band][0]
+                    print(f'Nechad band: {nechad_band}nm, band number: {nechad_band_number}')
+                else:
+                    nechad_band_number = 33
                     # covariates_index_list = []
                     # for i in covariates_index:
                     #     if ':' in i:
@@ -716,7 +724,7 @@ while True:
                 #-----prediction-------------
                 if values['-PREDICT_CHECKBOX-'] is True:
                     try: 
-                        test_stitch_class.get_nechad_predicted_image(reflectance,reflectance_band=27,
+                        test_stitch_class.get_nechad_predicted_image(reflectance,reflectance_band=nechad_band_number,
                                                                      A_tau=covariates_index_list[0],C=covariates_index_list[1])
                         print("Generating prediction map...")
                     except Exception as E:
